@@ -3,232 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>MindMap - Google Drive Sync</title>
-  <!-- একসাথে দুইটা লাইব্রেরি: GIS (নতুন) + gapi (Drive API) -->
+  <title>MindMap Pro - EdrawMind Style</title>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="https://apis.google.com/js/api.js"></script>
+  <!-- gapi লোড হবে এবং আমরা অপেক্ষা করব -->
+  <script src="https://apis.google.com/js/api.js" onload="onGapiLoad()" defer></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
-      background: #f4f7fa;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .toolbar {
-      background: white;
-      padding: 10px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      z-index: 10;
-    }
-    .toolbar .app-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: #2c3e50;
-    }
-    .toolbar .auth-section {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-    .login-btn, .logout-btn {
-      background: #1a73e8;
-      color: white;
-      border: none;
-      padding: 8px 18px;
-      border-radius: 24px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: 0.2s;
-      font-size: 0.9rem;
-    }
-    .login-btn:hover, .logout-btn:hover {
-      background: #1557b0;
-    }
-    .logout-btn {
-      background: #e74c3c;
-    }
-    .logout-btn:hover {
-      background: #c0392b;
-    }
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.9rem;
-      color: #2c3e50;
-    }
-    .user-info img {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: 2px solid #ecf0f1;
-    }
-    .sync-status {
-      font-size: 0.8rem;
-      color: #7f8c8d;
-      margin-right: 12px;
-    }
-    .main-container {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-      position: relative;
-    }
-    .map-area {
-      flex: 1;
-      background: #ffffff;
-      position: relative;
-      overflow: auto;
-      cursor: grab;
-    }
-    .map-area:active {
-      cursor: grabbing;
-    }
-    .map-area svg {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-    .editor-panel {
-      width: 280px;
-      background: white;
-      border-left: 1px solid #e0e0e0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      box-shadow: -2px 0 10px rgba(0,0,0,0.03);
-      overflow-y: auto;
-      transition: width 0.3s;
-    }
-    .editor-panel.hidden {
-      width: 0;
-      padding: 0;
-      border: none;
-      overflow: hidden;
-    }
-    .editor-panel h3 {
-      color: #2c3e50;
-      font-size: 1.1rem;
-      margin-bottom: 5px;
-      white-space: nowrap;
-    }
-    .editor-field {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .editor-field label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #555;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .editor-field input, .editor-field textarea {
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      transition: 0.2s;
-      resize: vertical;
-    }
-    .editor-field input:focus, .editor-field textarea:focus {
-      border-color: #1a73e8;
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(26,115,232,0.1);
-    }
-    .editor-field textarea {
-      min-height: 60px;
-    }
-    .node-preview-image {
-      max-width: 100%;
-      max-height: 80px;
-      border-radius: 6px;
-      margin-top: 5px;
-      object-fit: cover;
-      border: 1px solid #eee;
-    }
-    .editor-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 5px;
-    }
-    .btn {
-      padding: 8px 14px;
-      border: none;
-      border-radius: 6px;
-      font-weight: 500;
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .btn-add {
-      background: #27ae60;
-      color: white;
-    }
-    .btn-add:hover {
-      background: #219a52;
-    }
-    .btn-delete {
-      background: #e74c3c;
-      color: white;
-    }
-    .btn-delete:hover {
-      background: #c0392b;
-    }
-    .btn-save {
-      background: #1a73e8;
-      color: white;
-    }
-    .btn-save:hover {
-      background: #1557b0;
-    }
-    .btn-close {
-      background: #bdc3c7;
-      color: #2c3e50;
-    }
-    .btn-close:hover {
-      background: #a6acaf;
-    }
-    .no-selection-message {
-      color: #95a5a6;
-      font-style: italic;
-      font-size: 0.9rem;
-      text-align: center;
-      margin-top: 30px;
-    }
-    @media (max-width: 768px) {
-      .main-container {
-        flex-direction: column;
-      }
-      .editor-panel {
-        width: 100%;
-        max-height: 40vh;
-        border-left: none;
-        border-top: 1px solid #e0e0e0;
-      }
-    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Segoe UI',Roboto,sans-serif;background:#f4f7fa;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+    .toolbar{background:white;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.05);z-index:10;flex-wrap:wrap;gap:10px;}
+    .toolbar .app-title{font-size:1.5rem;font-weight:600;color:#2c3e50;}
+    .tool-actions{display:flex;gap:10px;align-items:center;}
+    .tool-actions select,.tool-actions button{padding:6px 12px;border-radius:6px;border:1px solid #ccc;font-size:0.85rem;cursor:pointer;}
+    .login-btn,.logout-btn{background:#1a73e8;color:white;border:none;padding:8px 18px;border-radius:24px;font-weight:500;cursor:pointer;font-size:0.9rem;}
+    .logout-btn{background:#e74c3c;}
+    .user-info{display:flex;align-items:center;gap:8px;font-size:0.9rem;}
+    .user-info img{width:32px;height:32px;border-radius:50%;}
+    .sync-status{font-size:0.8rem;color:#7f8c8d;}
+    .main-container{flex:1;display:flex;overflow:hidden;position:relative;}
+    .map-area{flex:1;background:#fff;position:relative;overflow:auto;cursor:grab;}
+    .map-area svg{width:100%;height:100%;display:block;}
+    .editor-panel{width:280px;background:white;border-left:1px solid #e0e0e0;padding:20px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;transition:width 0.3s;}
+    .editor-panel.hidden{width:0;padding:0;border:none;overflow:hidden;}
+    .editor-field{display:flex;flex-direction:column;gap:4px;}
+    .editor-field label{font-size:0.75rem;font-weight:600;color:#555;text-transform:uppercase;}
+    .editor-field input,.editor-field textarea,.editor-field select{padding:8px;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;}
+    .btn{padding:8px 14px;border:none;border-radius:6px;font-weight:500;cursor:pointer;font-size:0.85rem;margin-right:4px;}
+    .btn-add{background:#27ae60;color:white;}
+    .btn-delete{background:#e74c3c;color:white;}
+    .btn-save{background:#1a73e8;color:white;}
+    .color-input{width:40px;height:30px;padding:0;border:1px solid #ddd;border-radius:4px;}
+    .node-preview-image{max-width:100%;max-height:60px;border-radius:4px;margin-top:4px;}
+    @media(max-width:768px){.main-container{flex-direction:column;}.editor-panel{width:100%;max-height:40vh;border-left:none;border-top:1px solid #e0e0e0;}}
   </style>
 </head>
 <body>
   <div class="toolbar">
     <div class="app-title">🧠 MindMap Pro</div>
-    <div class="auth-section">
+    <div class="tool-actions">
+      <select id="layoutSelect" title="Change layout">
+        <option value="radial">Radial Tree</option>
+        <option value="tree">Left-to-Right Tree</option>
+      </select>
+      <button id="exportPngBtn" title="Export as PNG">📸 Export PNG</button>
       <span id="syncStatus" class="sync-status">Not signed in</span>
       <div id="userInfo" class="user-info" style="display:none;"></div>
       <button id="loginBtn" class="login-btn">Sign in with Google</button>
@@ -246,6 +62,22 @@
         <label>Text</label>
         <textarea id="nodeText" placeholder="Enter node text..."></textarea>
       </div>
+      <div class="editor-field" style="flex-direction:row; gap:10px;">
+        <div><label>Fill Color</label><input type="color" id="nodeFillColor" class="color-input" value="#ffffff"></div>
+        <div><label>Border</label><input type="color" id="nodeBorderColor" class="color-input" value="#bdc3c7"></div>
+      </div>
+      <div class="editor-field">
+        <label>Shape</label>
+        <select id="nodeShape">
+          <option value="rect">Rectangle</option>
+          <option value="ellipse">Ellipse</option>
+          <option value="diamond">Diamond</option>
+        </select>
+      </div>
+      <div class="editor-field">
+        <label>Note (tooltip)</label>
+        <input type="text" id="nodeNote" placeholder="Add a note...">
+      </div>
       <div class="editor-field">
         <label>Image URL</label>
         <input type="text" id="nodeImageUrl" placeholder="https://example.com/image.jpg">
@@ -257,417 +89,565 @@
       </div>
       <div class="editor-actions">
         <button id="btnAddChild" class="btn btn-add">➕ Add Child</button>
-        <button id="btnDeleteNode" class="btn btn-delete">🗑️ Delete Node</button>
-        <button id="btnCloseEditor" class="btn btn-close">✖ Close</button>
+        <button id="btnDeleteNode" class="btn btn-delete">🗑️ Delete</button>
+        <button id="btnCloseEditor" class="btn">✖ Close</button>
       </div>
-      <div class="editor-actions" style="margin-top:10px;">
-        <button id="btnSaveManual" class="btn btn-save">💾 Save to Drive</button>
-      </div>
-      <div id="noSelectionMsg" class="no-selection-message">Click a node to edit</div>
+      <button id="btnSaveManual" class="btn btn-save">💾 Save to Drive</button>
     </div>
   </div>
 
   <script>
-    (function() {
-      const CLIENT_ID = '1086951640296-jrlskg8g6r2obe2ditsb1ocuph5ili4j.apps.googleusercontent.com';
-      const API_KEY = 'AIzaSyDEG3yc1E_16M3eeOqsuDq8x98jN9AwpTQ';
-      const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+    // ---------- GLOBAL STATE ----------
+    const CLIENT_ID = '1086951640296-jrlskg8g6r2obe2ditsb1ocuph5ili4j.apps.googleusercontent.com';
+    const API_KEY = 'AIzaSyDEG3yc1E_16M3eeOqsuDq8x98jN9AwpTQ';
+    const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 
-      let nodes = new Map();
-      let rootId = 'root';
-      let selectedNodeId = null;
-      let isSignedIn = false;
-      let appDataFileId = null;
-      let saveTimeout = null;
-      let tokenClient;
-      let accessToken = null;
+    let nodes = new Map();
+    let rootId = 'root';
+    let selectedNodeId = null;
+    let isSignedIn = false;
+    let appDataFileId = null;
+    let saveTimeout = null;
+    let tokenClient;
+    let accessToken = null;
+    let gapiReady = false;
 
-      const BASE_RADIUS = 180;
-      const LEVEL_RADIUS_INCREMENT = 160;
-      const NODE_WIDTH = 160;
-      const NODE_HEIGHT = 60;
-      const IMAGE_PREVIEW_SIZE = 40;
+    // Layout & appearance
+    let currentLayout = 'radial'; // 'radial' or 'tree'
+    // Custom positions (for drag) stored in node.customX, customY
+    const NODE_WIDTH = 160, NODE_HEIGHT = 60;
 
-      // ---------- MIND MAP LOGIC ----------
-      function createDefaultMindmap() {
+    // ---------- MIND MAP DATA ----------
+    function createDefaultMindmap() {
+      nodes.clear();
+      rootId = 'root';
+      nodes.set(rootId, { id: rootId, text: 'My Mind Map', imageUrl: '', linkUrl: '', children: [], parentId: null,
+        fillColor: '#ffffff', borderColor: '#1a73e8', shape: 'rect', note: '', customX: null, customY: null });
+      const c1 = addChildNode(rootId, 'Ideas');
+      const c2 = addChildNode(rootId, 'Tasks');
+      addChildNode(c1, 'Brainstorm');
+      addChildNode(c1, 'Research');
+      addChildNode(c2, 'Urgent');
+      selectedNodeId = null;
+    }
+
+    function generateId() { return 'n_'+Date.now()+'_'+Math.random().toString(36).substr(2,6); }
+
+    function addChildNode(parentId, text='New Node') {
+      const id = generateId();
+      nodes.set(id, { id, text, imageUrl:'', linkUrl:'', children:[], parentId,
+        fillColor:'#ffffff', borderColor:'#bdc3c7', shape:'rect', note:'', customX:null, customY:null });
+      const parent = nodes.get(parentId);
+      if(parent) parent.children.push(id);
+      return id;
+    }
+
+    function deleteNodeRecursive(nodeId) {
+      const node = nodes.get(nodeId);
+      if(!node) return;
+      [...node.children].forEach(cid => deleteNodeRecursive(cid));
+      if(node.parentId) {
+        const parent = nodes.get(node.parentId);
+        if(parent) parent.children = parent.children.filter(cid => cid!==nodeId);
+      }
+      nodes.delete(nodeId);
+    }
+
+    // Serialization includes new fields
+    function serializeMindmap() {
+      const plain = {};
+      nodes.forEach((n,id) => { plain[id] = {...n, children:n.children}; });
+      return JSON.stringify({rootId, nodes:plain}, null,2);
+    }
+
+    function deserializeMindmap(jsonStr) {
+      try {
+        const data = JSON.parse(jsonStr);
+        rootId = data.rootId || 'root';
         nodes.clear();
-        rootId = 'root';
-        nodes.set(rootId, { id: rootId, text: 'My Mind Map', imageUrl: '', linkUrl: '', children: [], parentId: null });
-        addChildNode(rootId, 'Ideas');
-        let child1 = nodes.get(rootId).children[0];
-        addChildNode(child1, 'Brainstorm');
-        addChildNode(child1, 'Research');
-        addChildNode(rootId, 'Tasks');
-        selectedNodeId = null;
-      }
-
-      function generateId() {
-        return 'node_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-      }
-
-      function addChildNode(parentId, text = 'New Node', imageUrl = '', linkUrl = '') {
-        const id = generateId();
-        nodes.set(id, { id, text, imageUrl, linkUrl, children: [], parentId });
-        const parent = nodes.get(parentId);
-        if (parent) parent.children.push(id);
-        return id;
-      }
-
-      function deleteNodeRecursive(nodeId) {
-        const node = nodes.get(nodeId);
-        if (!node) return;
-        [...node.children].forEach(childId => deleteNodeRecursive(childId));
-        if (node.parentId) {
-          const parent = nodes.get(node.parentId);
-          if (parent) parent.children = parent.children.filter(cid => cid !== nodeId);
-        }
-        nodes.delete(nodeId);
-      }
-
-      function serializeMindmap() {
-        const plainNodes = {};
-        nodes.forEach((node, id) => {
-          plainNodes[id] = { id: node.id, text: node.text, imageUrl: node.imageUrl, linkUrl: node.linkUrl, children: node.children, parentId: node.parentId };
-        });
-        return JSON.stringify({ rootId, nodes: plainNodes }, null, 2);
-      }
-
-      function deserializeMindmap(jsonStr) {
-        try {
-          const data = JSON.parse(jsonStr);
-          rootId = data.rootId || 'root';
-          nodes.clear();
-          if (data.nodes) {
-            Object.keys(data.nodes).forEach(id => {
-              const n = data.nodes[id];
-              nodes.set(id, { id: n.id, text: n.text || 'Node', imageUrl: n.imageUrl || '', linkUrl: n.linkUrl || '', children: n.children || [], parentId: n.parentId || null });
+        if(data.nodes) {
+          Object.keys(data.nodes).forEach(id => {
+            const n = data.nodes[id];
+            nodes.set(id, {
+              id:n.id, text:n.text||'Node', imageUrl:n.imageUrl||'', linkUrl:n.linkUrl||'',
+              children:n.children||[], parentId:n.parentId||null,
+              fillColor:n.fillColor||'#ffffff', borderColor:n.borderColor||'#bdc3c7',
+              shape:n.shape||'rect', note:n.note||'',
+              customX:n.customX||null, customY:n.customY||null
             });
-          }
-          if (!nodes.has(rootId)) createDefaultMindmap();
-          selectedNodeId = null;
-        } catch (e) {
-          console.error('Failed to parse mindmap', e);
-          createDefaultMindmap();
+          });
         }
-      }
+        if(!nodes.has(rootId)) createDefaultMindmap();
+        selectedNodeId = null;
+      } catch(e) { console.error('Parse error',e); createDefaultMindmap(); }
+    }
 
-      // ---------- RENDERING ----------
-      function computeLayout() {
-        const positions = new Map();
-        const rootNode = nodes.get(rootId);
-        if (!rootNode) return positions;
+    // ---------- LAYOUT COMPUTATION (supports radial & tree) ----------
+    function computeLayout() {
+      const positions = new Map();
+      const root = nodes.get(rootId);
+      if(!root) return positions;
 
+      if(currentLayout === 'radial') {
+        // Radial tree
+        const leafCounts = new Map();
         function countLeaves(nodeId) {
           const node = nodes.get(nodeId);
-          if (!node || node.children.length === 0) return 1;
-          let total = 0;
+          if(!node || node.children.length===0) return 1;
+          let total=0;
           node.children.forEach(cid => total += countLeaves(cid));
           return total;
         }
-        const leafCounts = new Map();
         function calcLeafCounts(nodeId) {
-          const cnt = countLeaves(nodeId);
-          leafCounts.set(nodeId, cnt);
+          leafCounts.set(nodeId, countLeaves(nodeId));
           const node = nodes.get(nodeId);
-          if (node) node.children.forEach(cid => calcLeafCounts(cid));
+          if(node) node.children.forEach(cid => calcLeafCounts(cid));
         }
         calcLeafCounts(rootId);
-
-        function assignPositions(nodeId, angleStart, angleSpan, radius) {
+        function assignRadial(nodeId, angleStart, angleSpan, radius) {
           const node = nodes.get(nodeId);
-          if (!node) return;
-          if (nodeId === rootId) {
-            positions.set(nodeId, { x: 0, y: 0 });
+          if(!node) return;
+          if(nodeId === rootId) {
+            positions.set(nodeId, {x:0, y:0});
           } else {
-            const myAngle = angleStart + angleSpan / 2;
+            const myAngle = angleStart + angleSpan/2;
             const x = radius * Math.cos(myAngle);
             const y = radius * Math.sin(myAngle);
-            positions.set(nodeId, { x, y });
+            positions.set(nodeId, {x, y});
           }
           const children = node.children.filter(cid => nodes.has(cid));
-          if (children.length === 0) return;
-          const totalLeaves = leafCounts.get(nodeId) || 1;
-          let currentAngle = angleStart;
+          if(children.length===0) return;
+          const totalLeaves = leafCounts.get(nodeId)||1;
+          let curAngle = angleStart;
           children.forEach(cid => {
-            const childLeaves = leafCounts.get(cid) || 1;
-            const childAngleSpan = (childLeaves / totalLeaves) * angleSpan;
-            assignPositions(cid, currentAngle, childAngleSpan, radius + LEVEL_RADIUS_INCREMENT);
-            currentAngle += childAngleSpan;
+            const childLeaves = leafCounts.get(cid)||1;
+            const childSpan = (childLeaves/totalLeaves)*angleSpan;
+            assignRadial(cid, curAngle, childSpan, radius+160);
+            curAngle += childSpan;
           });
         }
-        assignPositions(rootId, 0, 2 * Math.PI, 0);
-        return positions;
-      }
-
-      function renderMindmap() {
-        const svg = document.getElementById('mindmapSvg');
-        svg.innerHTML = '';
-        const positions = computeLayout();
-        if (positions.size === 0) return;
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        positions.forEach(pos => {
-          minX = Math.min(minX, pos.x); minY = Math.min(minY, pos.y);
-          maxX = Math.max(maxX, pos.x); maxY = Math.max(maxY, pos.y);
-        });
-        const padding = 250;
-        svg.setAttribute('viewBox', `${minX - padding} ${minY - padding} ${maxX - minX + 2*padding} ${maxY - minY + 2*padding}`);
-        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-        defs.innerHTML = `<marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#7f8c8d"/></marker>`;
-        svg.appendChild(defs);
-
-        nodes.forEach((node, id) => {
-          if (id === rootId || !node.parentId) return;
-          const pp = positions.get(node.parentId), cp = positions.get(id);
-          if (!pp || !cp) return;
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          line.setAttribute('x1', pp.x); line.setAttribute('y1', pp.y);
-          line.setAttribute('x2', cp.x); line.setAttribute('y2', cp.y);
-          line.setAttribute('stroke', '#bdc3c7'); line.setAttribute('stroke-width', '2');
-          svg.appendChild(line);
-        });
-
-        nodes.forEach((node, id) => {
-          const pos = positions.get(id);
-          if (!pos) return;
-          const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-          g.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
-          g.style.cursor = 'pointer';
-          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          rect.setAttribute('x', -NODE_WIDTH/2); rect.setAttribute('y', -NODE_HEIGHT/2);
-          rect.setAttribute('width', NODE_WIDTH); rect.setAttribute('height', NODE_HEIGHT);
-          rect.setAttribute('rx', '10');
-          rect.setAttribute('fill', id === selectedNodeId ? '#ebf5fb' : '#ffffff');
-          rect.setAttribute('stroke', id === selectedNodeId ? '#1a73e8' : '#bdc3c7');
-          rect.setAttribute('stroke-width', id === selectedNodeId ? '3' : '1.5');
-          g.appendChild(rect);
-
-          let textXOffset = 0;
-          if (node.imageUrl) {
-            const clipId = 'clip_' + id;
-            const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
-            clipPath.setAttribute('id', clipId);
-            const clipRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            clipRect.setAttribute('x', -NODE_WIDTH/2 + 8); clipRect.setAttribute('y', -NODE_HEIGHT/2 + 8);
-            clipRect.setAttribute('width', IMAGE_PREVIEW_SIZE); clipRect.setAttribute('height', IMAGE_PREVIEW_SIZE);
-            clipRect.setAttribute('rx', '6');
-            clipPath.appendChild(clipRect);
-            defs.appendChild(clipPath);
-            const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-            img.setAttribute('x', -NODE_WIDTH/2 + 8); img.setAttribute('y', -NODE_HEIGHT/2 + 8);
-            img.setAttribute('width', IMAGE_PREVIEW_SIZE); img.setAttribute('height', IMAGE_PREVIEW_SIZE);
-            img.setAttribute('href', node.imageUrl);
-            img.setAttribute('clip-path', `url(#${clipId})`);
-            g.appendChild(img);
-            textXOffset = IMAGE_PREVIEW_SIZE + 12;
+        assignRadial(rootId, 0, 2*Math.PI, 0);
+      } else {
+        // Left-to-right tree
+        function assignTree(nodeId, x, y, levelHeight) {
+          const node = nodes.get(nodeId);
+          if(!node) return { width: 0, height: 0 };
+          const children = node.children.filter(cid => nodes.has(cid));
+          if(children.length===0) {
+            positions.set(nodeId, {x, y});
+            return { width: 1, height: 1 };
           }
-
-          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          text.setAttribute('x', -NODE_WIDTH/2 + 12 + textXOffset);
-          text.setAttribute('y', 5);
-          text.setAttribute('fill', '#2c3e50');
-          text.setAttribute('font-size', '13');
-          text.textContent = node.text.length > 20 ? node.text.substring(0,20)+'…' : node.text;
-          g.appendChild(text);
-
-          if (node.linkUrl) {
-            const linkIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            linkIcon.setAttribute('x', NODE_WIDTH/2 - 16); linkIcon.setAttribute('y', -NODE_HEIGHT/2 + 18);
-            linkIcon.setAttribute('fill', '#1a73e8'); linkIcon.textContent = '🔗';
-            g.appendChild(linkIcon);
-          }
-
-          g.addEventListener('click', (e) => { e.stopPropagation(); selectNode(id); });
-          g.addEventListener('dblclick', (e) => { e.stopPropagation(); if (node.linkUrl) window.open(node.linkUrl, '_blank'); });
-          svg.appendChild(g);
-        });
-        svg.addEventListener('click', (e) => { if (e.target === svg) selectNode(null); });
-      }
-
-      function selectNode(nodeId) { selectedNodeId = nodeId; updateEditorPanel(); renderMindmap(); }
-
-      function updateEditorPanel() {
-        const panel = document.getElementById('editorPanel');
-        const noSelMsg = document.getElementById('noSelectionMsg');
-        const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
-        if (!node) {
-          panel.classList.add('hidden');
-          if (noSelMsg) noSelMsg.style.display = 'block';
-          return;
+          let totalHeight = 0;
+          const childResults = [];
+          children.forEach(cid => {
+            const res = assignTree(cid, x+1, y+totalHeight, levelHeight);
+            childResults.push(res);
+            totalHeight += res.height;
+          });
+          const myY = y + totalHeight/2 - 0.5;
+          positions.set(nodeId, {x, y:myY});
+          return { width: 1+Math.max(...childResults.map(r=>r.width)), height: Math.max(1, totalHeight) };
         }
-        panel.classList.remove('hidden');
-        if (noSelMsg) noSelMsg.style.display = 'none';
-        document.getElementById('nodeText').value = node.text || '';
-        document.getElementById('nodeImageUrl').value = node.imageUrl || '';
-        document.getElementById('nodeLinkUrl').value = node.linkUrl || '';
-        updateImagePreview();
-      }
-
-      function updateImagePreview() {
-        const url = document.getElementById('nodeImageUrl').value.trim();
-        const preview = document.getElementById('nodeImagePreview');
-        preview.style.display = url ? 'block' : 'none';
-        if (url) preview.src = url;
-      }
-
-      function saveEditorChanges() {
-        if (!selectedNodeId) return;
-        const node = nodes.get(selectedNodeId);
-        node.text = document.getElementById('nodeText').value.trim() || 'Node';
-        node.imageUrl = document.getElementById('nodeImageUrl').value.trim();
-        node.linkUrl = document.getElementById('nodeLinkUrl').value.trim();
-        renderMindmap();
-        triggerAutoSave();
-      }
-
-      function addChildFromEditor() {
-        if (!selectedNodeId) return;
-        const newId = addChildNode(selectedNodeId, 'New Child');
-        saveEditorChanges();
-        selectNode(newId);
-        renderMindmap();
-        triggerAutoSave();
-      }
-
-      function deleteSelectedNode() {
-        if (!selectedNodeId || selectedNodeId === rootId) return;
-        if (confirm('Delete node?')) { deleteNodeRecursive(selectedNodeId); selectedNodeId = null; renderMindmap(); updateEditorPanel(); triggerAutoSave(); }
-      }
-
-      function closeEditor() { selectNode(null); }
-
-      // ---------- GOOGLE AUTH + DRIVE ----------
-      function initGis() {
-        tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: SCOPES,
-          callback: (tokenResponse) => {
-            if (tokenResponse.error) return console.error(tokenResponse);
-            accessToken = tokenResponse.access_token;
-            fetchUserInfo(accessToken);
-            initGapiClient(); // Initialize gapi after token
-          },
+        assignTree(rootId, 0, 0, 1);
+        // Scale to pixels
+        const scale = 180;
+        positions.forEach((pos,id) => {
+          pos.x = pos.x * scale;
+          pos.y = pos.y * scale;
         });
       }
 
-      async function fetchUserInfo(token) {
-        try {
-          const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${token}` } });
-          const user = await res.json();
-          document.getElementById('userInfo').innerHTML = `<img src="${user.picture}" alt=""/> <span>${user.name}</span>`;
-          document.getElementById('userInfo').style.display = 'flex';
-          updateSigninStatus(true);
-        } catch (e) { console.error('User info error', e); }
-      }
-
-      function updateSigninStatus(status) {
-        isSignedIn = status;
-        document.getElementById('loginBtn').style.display = status ? 'none' : 'inline-block';
-        document.getElementById('logoutBtn').style.display = status ? 'inline-block' : 'none';
-        document.getElementById('syncStatus').textContent = status ? 'Loading mindmap...' : 'Not signed in';
-        if (!status) {
-          document.getElementById('userInfo').style.display = 'none';
-          accessToken = null; appDataFileId = null;
-          createDefaultMindmap(); renderMindmap();
-        }
-      }
-
-      function initGapiClient() {
-        if (!accessToken) return;
-        gapi.load('client', async () => {
-          await gapi.client.init({ apiKey: API_KEY, discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"] });
-          gapi.client.setToken({ access_token: accessToken });
-          loadMindmapFromDrive(); // Now safe to call
-        });
-      }
-
-      async function loadMindmapFromDrive() {
-        document.getElementById('syncStatus').textContent = 'Loading...';
-        try {
-          const resp = await gapi.client.drive.files.list({ spaces: 'appDataFolder', fields: 'files(id, name)', pageSize: 10 });
-          const files = resp.result.files;
-          let fileId = null;
-          if (files && files.length) {
-            const match = files.find(f => f.name === 'mindmap.json');
-            if (match) fileId = match.id;
-          }
-          if (fileId) {
-            const fileResp = await gapi.client.drive.files.get({ fileId, alt: 'media' });
-            deserializeMindmap(fileResp.body);
-            appDataFileId = fileId;
-            document.getElementById('syncStatus').textContent = 'Mindmap loaded';
-          } else {
-            createDefaultMindmap();
-            await saveMindmapToDrive(true);
-          }
-          renderMindmap();
-        } catch (e) { console.error('Load error:', e); document.getElementById('syncStatus').textContent = 'Load failed'; createDefaultMindmap(); renderMindmap(); }
-      }
-
-      async function saveMindmapToDrive(isNew = false) {
-        if (!isSignedIn || !accessToken) return;
-        const jsonContent = serializeMindmap();
-        const fileMetadata = { name: 'mindmap.json', parents: ['appDataFolder'] };
-        const media = { mimeType: 'application/json', body: jsonContent };
-        try {
-          if (isNew || !appDataFileId) {
-            const createResp = await gapi.client.drive.files.create({ resource: fileMetadata, media, fields: 'id' });
-            appDataFileId = createResp.result.id;
-          } else {
-            await gapi.client.drive.files.update({ fileId: appDataFileId, media, fields: 'id' });
-          }
-          document.getElementById('syncStatus').textContent = 'Saved';
-        } catch (e) { console.error('Save error:', e); document.getElementById('syncStatus').textContent = 'Save failed'; }
-      }
-
-      function triggerAutoSave() {
-        if (!isSignedIn) return;
-        if (saveTimeout) clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => saveMindmapToDrive(false), 2000);
-      }
-
-      // ---------- EVENT BINDINGS ----------
-      function bindEvents() {
-        document.getElementById('loginBtn').addEventListener('click', () => tokenClient.requestAccessToken());
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-          if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
-          updateSigninStatus(false);
-        });
-        document.getElementById('nodeText').addEventListener('input', saveEditorChanges);
-        document.getElementById('nodeImageUrl').addEventListener('input', () => { updateImagePreview(); saveEditorChanges(); });
-        document.getElementById('nodeLinkUrl').addEventListener('input', saveEditorChanges);
-        document.getElementById('btnAddChild').addEventListener('click', addChildFromEditor);
-        document.getElementById('btnDeleteNode').addEventListener('click', deleteSelectedNode);
-        document.getElementById('btnCloseEditor').addEventListener('click', closeEditor);
-        document.getElementById('btnSaveManual').addEventListener('click', () => saveMindmapToDrive(false));
-
-        const mapContainer = document.getElementById('mapContainer');
-        let panning = false, sx, sy, sl, st;
-        mapContainer.addEventListener('mousedown', (e) => {
-          if (e.target === mapContainer || e.target === document.getElementById('mindmapSvg')) {
-            panning = true; sx = e.clientX; sy = e.clientY; sl = mapContainer.scrollLeft; st = mapContainer.scrollTop; mapContainer.style.cursor = 'grabbing';
-          }
-        });
-        window.addEventListener('mouseup', () => { panning = false; mapContainer.style.cursor = 'grab'; });
-        mapContainer.addEventListener('mousemove', (e) => {
-          if (!panning) return;
-          mapContainer.scrollLeft = sl - (e.clientX - sx);
-          mapContainer.scrollTop = st - (e.clientY - sy);
-        });
-      }
-
-      // ---------- STARTUP ----------
-      window.addEventListener('load', () => {
-        createDefaultMindmap();
-        renderMindmap();
-        bindEvents();
-        if (typeof google !== 'undefined' && google.accounts) {
-          initGis();
-        } else {
-          // If GIS script hasn't loaded yet, wait a bit (unlikely)
-          setTimeout(() => { if (google.accounts) initGis(); }, 500);
+      // Apply custom positions if set (overrides computed)
+      nodes.forEach((node,id) => {
+        if(node.customX !== null && node.customY !== null) {
+          positions.set(id, {x:node.customX, y:node.customY});
         }
       });
-    })();
+      return positions;
+    }
+
+    // ---------- SVG RENDERING (with shapes, colors, notes, drag) ----------
+    function renderMindmap() {
+      const svg = document.getElementById('mindmapSvg');
+      svg.innerHTML = '';
+      const positions = computeLayout();
+      if(positions.size===0) return;
+
+      // bounds
+      let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+      positions.forEach(pos => { minX=Math.min(minX,pos.x); minY=Math.min(minY,pos.y); maxX=Math.max(maxX,pos.x); maxY=Math.max(maxY,pos.y); });
+      const pad = 200;
+      svg.setAttribute('viewBox', `${minX-pad} ${minY-pad} ${maxX-minX+2*pad} ${maxY-minY+2*pad}`);
+
+      const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+      defs.innerHTML = `<marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#7f8c8d"/></marker>`;
+      svg.appendChild(defs);
+
+      // links
+      nodes.forEach((node,id) => {
+        if(id===rootId || !node.parentId) return;
+        const pp = positions.get(node.parentId), cp = positions.get(id);
+        if(!pp||!cp) return;
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1',pp.x); line.setAttribute('y1',pp.y);
+        line.setAttribute('x2',cp.x); line.setAttribute('y2',cp.y);
+        line.setAttribute('stroke','#bdc3c7'); line.setAttribute('stroke-width','2');
+        svg.appendChild(line);
+      });
+
+      // nodes
+      nodes.forEach((node,id) => {
+        const pos = positions.get(id);
+        if(!pos) return;
+        const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+        g.setAttribute('transform',`translate(${pos.x},${pos.y})`);
+        g.setAttribute('data-node-id',id);
+        g.style.cursor = 'pointer';
+
+        const shape = node.shape || 'rect';
+        let shapeEl;
+        if(shape==='ellipse') {
+          shapeEl = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+          shapeEl.setAttribute('cx',0); shapeEl.setAttribute('cy',0);
+          shapeEl.setAttribute('rx',NODE_WIDTH/2); shapeEl.setAttribute('ry',NODE_HEIGHT/2);
+        } else if(shape==='diamond') {
+          shapeEl = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+          const w=NODE_WIDTH/2, h=NODE_HEIGHT/2;
+          shapeEl.setAttribute('points', `0,${-h} ${w},0 0,${h} ${-w},0`);
+        } else {
+          shapeEl = document.createElementNS('http://www.w3.org/2000/svg','rect');
+          shapeEl.setAttribute('x',-NODE_WIDTH/2); shapeEl.setAttribute('y',-NODE_HEIGHT/2);
+          shapeEl.setAttribute('width',NODE_WIDTH); shapeEl.setAttribute('height',NODE_HEIGHT);
+          shapeEl.setAttribute('rx','8');
+        }
+        shapeEl.setAttribute('fill', node.fillColor || '#ffffff');
+        shapeEl.setAttribute('stroke', id===selectedNodeId ? '#1a73e8' : (node.borderColor||'#bdc3c7'));
+        shapeEl.setAttribute('stroke-width', id===selectedNodeId ? '3' : '1.5');
+        g.appendChild(shapeEl);
+
+        // image thumbnail
+        let textXOffset = 0;
+        if(node.imageUrl) {
+          const clipId = 'clip_'+id;
+          const clipPath = document.createElementNS('http://www.w3.org/2000/svg','clipPath');
+          clipPath.setAttribute('id',clipId);
+          const cr = document.createElementNS('http://www.w3.org/2000/svg','rect');
+          cr.setAttribute('x',-NODE_WIDTH/2+6); cr.setAttribute('y',-NODE_HEIGHT/2+6);
+          cr.setAttribute('width',30); cr.setAttribute('height',30);
+          cr.setAttribute('rx','4');
+          clipPath.appendChild(cr);
+          defs.appendChild(clipPath);
+          const img = document.createElementNS('http://www.w3.org/2000/svg','image');
+          img.setAttribute('x',-NODE_WIDTH/2+6); img.setAttribute('y',-NODE_HEIGHT/2+6);
+          img.setAttribute('width',30); img.setAttribute('height',30);
+          img.setAttribute('href',node.imageUrl);
+          img.setAttribute('clip-path',`url(#${clipId})`);
+          g.appendChild(img);
+          textXOffset = 40;
+        }
+
+        // text
+        const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+        text.setAttribute('x',-NODE_WIDTH/2+10+textXOffset); text.setAttribute('y',5);
+        text.setAttribute('fill','#2c3e50'); text.setAttribute('font-size','13');
+        text.textContent = node.text.length>20? node.text.substring(0,20)+'…' : node.text;
+        g.appendChild(text);
+
+        // link icon
+        if(node.linkUrl) {
+          const icon = document.createElementNS('http://www.w3.org/2000/svg','text');
+          icon.setAttribute('x',NODE_WIDTH/2-16); icon.setAttribute('y',-NODE_HEIGHT/2+18);
+          icon.setAttribute('fill','#1a73e8'); icon.textContent='🔗';
+          g.appendChild(icon);
+        }
+
+        // note tooltip via title
+        if(node.note) {
+          const title = document.createElementNS('http://www.w3.org/2000/svg','title');
+          title.textContent = node.note;
+          g.appendChild(title);
+        }
+
+        // events
+        g.addEventListener('click',(e)=>{ e.stopPropagation(); selectNode(id); });
+        g.addEventListener('dblclick',(e)=>{ e.stopPropagation(); if(node.linkUrl) window.open(node.linkUrl,'_blank'); });
+
+        // drag support
+        g.addEventListener('mousedown',(e)=>{
+          if(e.button!==0) return;
+          e.stopPropagation();
+          const svgEl = svg;
+          const startX = e.clientX, startY = e.clientY;
+          const origPos = positions.get(id);
+          if(!origPos) return;
+          const startPosX = origPos.x, startPosY = origPos.y;
+
+          function onMouseMove(ev) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            // update position in positions map and node data
+            positions.set(id, {x:startPosX+dx, y:startPosY+dy});
+            node.customX = startPosX+dx;
+            node.customY = startPosY+dy;
+            renderMindmap();
+            selectNode(id);
+          }
+          function onMouseUp() {
+            window.removeEventListener('mousemove',onMouseMove);
+            window.removeEventListener('mouseup',onMouseUp);
+            triggerAutoSave();
+          }
+          window.addEventListener('mousemove',onMouseMove);
+          window.addEventListener('mouseup',onMouseUp);
+        });
+
+        svg.appendChild(g);
+      });
+
+      svg.addEventListener('click',(e)=>{ if(e.target===svg) selectNode(null); });
+    }
+
+    function selectNode(nodeId) {
+      selectedNodeId = nodeId;
+      updateEditorPanel();
+      renderMindmap();
+    }
+
+    // ---------- EDITOR PANEL ----------
+    function updateEditorPanel() {
+      const panel = document.getElementById('editorPanel');
+      const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
+      if(!node) { panel.classList.add('hidden'); return; }
+      panel.classList.remove('hidden');
+      document.getElementById('nodeText').value = node.text||'';
+      document.getElementById('nodeImageUrl').value = node.imageUrl||'';
+      document.getElementById('nodeLinkUrl').value = node.linkUrl||'';
+      document.getElementById('nodeFillColor').value = node.fillColor||'#ffffff';
+      document.getElementById('nodeBorderColor').value = node.borderColor||'#bdc3c7';
+      document.getElementById('nodeShape').value = node.shape||'rect';
+      document.getElementById('nodeNote').value = node.note||'';
+      updateImagePreview();
+    }
+
+    function updateImagePreview() {
+      const url = document.getElementById('nodeImageUrl').value.trim();
+      const preview = document.getElementById('nodeImagePreview');
+      preview.style.display = url ? 'block' : 'none';
+      if(url) preview.src = url;
+    }
+
+    function saveEditorChanges() {
+      if(!selectedNodeId) return;
+      const node = nodes.get(selectedNodeId);
+      node.text = document.getElementById('nodeText').value.trim()||'Node';
+      node.imageUrl = document.getElementById('nodeImageUrl').value.trim();
+      node.linkUrl = document.getElementById('nodeLinkUrl').value.trim();
+      node.fillColor = document.getElementById('nodeFillColor').value;
+      node.borderColor = document.getElementById('nodeBorderColor').value;
+      node.shape = document.getElementById('nodeShape').value;
+      node.note = document.getElementById('nodeNote').value.trim();
+      renderMindmap();
+      triggerAutoSave();
+    }
+
+    function addChildFromEditor() {
+      if(!selectedNodeId) return;
+      const newId = addChildNode(selectedNodeId);
+      saveEditorChanges();
+      selectNode(newId);
+      renderMindmap();
+      triggerAutoSave();
+    }
+
+    function deleteSelectedNode() {
+      if(!selectedNodeId || selectedNodeId===rootId) return;
+      if(confirm('Delete node and children?')) {
+        deleteNodeRecursive(selectedNodeId);
+        selectedNodeId=null;
+        renderMindmap();
+        updateEditorPanel();
+        triggerAutoSave();
+      }
+    }
+
+    // ---------- GOOGLE AUTH + DRIVE ----------
+    let gapiLoaded = false;
+    window.onGapiLoad = function() {
+      gapiLoaded = true;
+      if(gapiReadyCallback) gapiReadyCallback();
+    };
+    let gapiReadyCallback = null;
+
+    function waitForGapi() {
+      return new Promise((resolve) => {
+        if(gapiLoaded) resolve();
+        else gapiReadyCallback = resolve;
+      });
+    }
+
+    function initGis() {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: async (tokenResponse) => {
+          if(tokenResponse.error) return console.error(tokenResponse);
+          accessToken = tokenResponse.access_token;
+          await fetchUserInfo(accessToken);
+          await waitForGapi();
+          await initGapiClient();
+        },
+      });
+    }
+
+    async function fetchUserInfo(token) {
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {headers:{Authorization:`Bearer ${token}`}});
+      const user = await res.json();
+      document.getElementById('userInfo').innerHTML = `<img src="${user.picture}" alt=""/> <span>${user.name}</span>`;
+      document.getElementById('userInfo').style.display='flex';
+      updateSigninStatus(true);
+    }
+
+    function updateSigninStatus(status) {
+      isSignedIn = status;
+      document.getElementById('loginBtn').style.display = status?'none':'inline-block';
+      document.getElementById('logoutBtn').style.display = status?'inline-block':'none';
+      document.getElementById('syncStatus').textContent = status?'Loading mindmap...':'Not signed in';
+      if(!status) {
+        document.getElementById('userInfo').style.display='none';
+        accessToken=null; appDataFileId=null;
+        createDefaultMindmap(); renderMindmap();
+      }
+    }
+
+    async function initGapiClient() {
+      await new Promise((res) => gapi.load('client', res));
+      await gapi.client.init({ apiKey: API_KEY, discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"] });
+      gapi.client.setToken({ access_token: accessToken });
+      gapiReady = true;
+      loadMindmapFromDrive();
+    }
+
+    async function loadMindmapFromDrive() {
+      document.getElementById('syncStatus').textContent='Loading...';
+      try {
+        const resp = await gapi.client.drive.files.list({ spaces:'appDataFolder', fields:'files(id,name)', pageSize:10 });
+        const files = resp.result.files;
+        let fileId=null;
+        if(files && files.length) {
+          const found = files.find(f=>f.name==='mindmap.json');
+          if(found) fileId=found.id;
+        }
+        if(fileId) {
+          const fileResp = await gapi.client.drive.files.get({fileId, alt:'media'});
+          deserializeMindmap(fileResp.body);
+          appDataFileId=fileId;
+          document.getElementById('syncStatus').textContent='Mindmap loaded';
+        } else {
+          createDefaultMindmap();
+          await saveMindmapToDrive(true);
+          document.getElementById('syncStatus').textContent='New mindmap created';
+        }
+        renderMindmap();
+      } catch(e) { console.error('Load error:',e); document.getElementById('syncStatus').textContent='Load failed'; createDefaultMindmap(); renderMindmap(); }
+    }
+
+    async function saveMindmapToDrive(isNew=false) {
+      if(!isSignedIn || !accessToken || !gapiReady) return;
+      const json = serializeMindmap();
+      const metadata = { name:'mindmap.json', parents:['appDataFolder'] };
+      const media = { mimeType:'application/json', body:json };
+      try {
+        if(isNew || !appDataFileId) {
+          const resp = await gapi.client.drive.files.create({ resource:metadata, media, fields:'id' });
+          appDataFileId = resp.result.id;
+        } else {
+          await gapi.client.drive.files.update({ fileId:appDataFileId, media, fields:'id' });
+        }
+        document.getElementById('syncStatus').textContent='Saved';
+      } catch(e) { console.error('Save error:',e); document.getElementById('syncStatus').textContent='Save failed'; }
+    }
+
+    function triggerAutoSave() {
+      if(!isSignedIn) return;
+      if(saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(()=>saveMindmapToDrive(false), 2000);
+    }
+
+    // ---------- EXPORT PNG ----------
+    async function exportPng() {
+      const svg = document.getElementById('mindmapSvg');
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svg);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      const blob = new Blob([svgString], {type:'image/svg+xml;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      img.onload = function() {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,0);
+        URL.revokeObjectURL(url);
+        const a = document.createElement('a');
+        a.download = 'mindmap.png';
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+      };
+      img.src = url;
+    }
+
+    // ---------- EVENT BINDINGS ----------
+    function bindEvents() {
+      document.getElementById('loginBtn').addEventListener('click',()=>tokenClient.requestAccessToken());
+      document.getElementById('logoutBtn').addEventListener('click',()=>{
+        if(accessToken) google.accounts.oauth2.revoke(accessToken, ()=>{});
+        updateSigninStatus(false);
+      });
+      document.getElementById('nodeText').addEventListener('input',saveEditorChanges);
+      document.getElementById('nodeImageUrl').addEventListener('input',()=>{updateImagePreview();saveEditorChanges();});
+      document.getElementById('nodeLinkUrl').addEventListener('input',saveEditorChanges);
+      document.getElementById('nodeFillColor').addEventListener('input',saveEditorChanges);
+      document.getElementById('nodeBorderColor').addEventListener('input',saveEditorChanges);
+      document.getElementById('nodeShape').addEventListener('change',saveEditorChanges);
+      document.getElementById('nodeNote').addEventListener('input',saveEditorChanges);
+      document.getElementById('btnAddChild').addEventListener('click',addChildFromEditor);
+      document.getElementById('btnDeleteNode').addEventListener('click',deleteSelectedNode);
+      document.getElementById('btnCloseEditor').addEventListener('click',()=>selectNode(null));
+      document.getElementById('btnSaveManual').addEventListener('click',()=>saveMindmapToDrive(false));
+      document.getElementById('layoutSelect').addEventListener('change',(e)=>{currentLayout=e.target.value; renderMindmap(); triggerAutoSave();});
+      document.getElementById('exportPngBtn').addEventListener('click',exportPng);
+
+      // map panning
+      const mapContainer = document.getElementById('mapContainer');
+      let panning=false, sx,sy,sl,st;
+      mapContainer.addEventListener('mousedown',(e)=>{
+        if(e.target===mapContainer||e.target===document.getElementById('mindmapSvg')){
+          panning=true; sx=e.clientX; sy=e.clientY; sl=mapContainer.scrollLeft; st=mapContainer.scrollTop; mapContainer.style.cursor='grabbing';
+        }
+      });
+      window.addEventListener('mouseup',()=>{panning=false; mapContainer.style.cursor='grab';});
+      mapContainer.addEventListener('mousemove',(e)=>{
+        if(!panning) return;
+        mapContainer.scrollLeft = sl - (e.clientX - sx);
+        mapContainer.scrollTop = st - (e.clientY - sy);
+      });
+    }
+
+    // ---------- STARTUP ----------
+    window.addEventListener('load',()=>{
+      createDefaultMindmap();
+      renderMindmap();
+      bindEvents();
+      if(typeof google !== 'undefined' && google.accounts) {
+        initGis();
+      } else {
+        window.addEventListener('load', ()=>{
+          if(google.accounts) initGis();
+        });
+      }
+    });
   </script>
 </body>
 </html>
