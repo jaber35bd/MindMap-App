@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>MindMap - Google Drive Sync</title>
-  <script src="https://apis.google.com/js/api.js"></script>
+  <!-- নতুন Google Identity Services লাইব্রেরি -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     * {
       margin: 0;
@@ -268,18 +269,21 @@
   <script>
     (function() {
       // ---------- GOOGLE API CONFIGURATION ----------
-      // তোমার দেওয়া Credentials
       const CLIENT_ID = '1086951640296-jrlskg8g6r2obe2ditsb1ocuph5ili4j.apps.googleusercontent.com';
       const API_KEY = 'AIzaSyDEG3yc1E_16M3eeOqsuDq8x98jN9AwpTQ';
-      const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
       const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 
+      // ---------- MIND MAP STATE ----------
       let nodes = new Map();
       let rootId = 'root';
       let selectedNodeId = null;
       let isSignedIn = false;
       let appDataFileId = null;
       let saveTimeout = null;
+
+      // GIS variables
+      let tokenClient;
+      let accessToken = null;
 
       const BASE_RADIUS = 180;
       const LEVEL_RADIUS_INCREMENT = 160;
@@ -312,14 +316,7 @@
 
       function addChildNode(parentId, text = 'New Node', imageUrl = '', linkUrl = '') {
         const id = generateId();
-        nodes.set(id, {
-          id,
-          text,
-          imageUrl,
-          linkUrl,
-          children: [],
-          parentId
-        });
+        nodes.set(id, { id, text, imageUrl, linkUrl, children: [], parentId });
         const parent = nodes.get(parentId);
         if (parent) parent.children.push(id);
         return id;
@@ -377,63 +374,84 @@
         }
       }
 
+      // ---------- NEW GOOGLE IDENTITY SERVICES ----------
+      function initGis() {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: (tokenResponse) => {
+            if (tokenResponse.error) {
+              console.error('Token error:', tokenResponse);
+              updateSigninStatus(false);
+              return;
+            }
+            accessToken = tokenResponse.access_token;
+            // Load user info using the token
+            fetchUserInfo(accessToken);
+            // Initialize gapi client with the token for Drive API
+            initGapiClient();
+          },
+        });
+      }
+
+      async function fetchUserInfo(token) {
+        try {
+          const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const user = await res.json();
+          document.getElementById('userInfo').innerHTML = 
+            `<img src="${user.picture}" alt="profile"/> <span>${user.name}</span>`;
+          document.getElementById('userInfo').style.display = 'flex';
+          updateSigninStatus(true);
+          loadMindmapFromDrive();
+        } catch (e) {
+          console.error('User info fetch failed', e);
+        }
+      }
+
       function updateSigninStatus(status) {
         isSignedIn = status;
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const userInfoDiv = document.getElementById('userInfo');
-        const syncStatus = document.getElementById('syncStatus');
-
-        if (isSignedIn) {
-          loginBtn.style.display = 'none';
-          logoutBtn.style.display = 'inline-block';
-          const profile = gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile();
-          if (profile) {
-            userInfoDiv.style.display = 'flex';
-            userInfoDiv.innerHTML = `<img src="${profile.getImageUrl()}" alt="profile"/> <span>${profile.getName()}</span>`;
-          }
-          syncStatus.textContent = 'Loading mindmap...';
-          loadMindmapFromDrive();
-        } else {
-          loginBtn.style.display = 'inline-block';
-          logoutBtn.style.display = 'none';
-          userInfoDiv.style.display = 'none';
-          userInfoDiv.innerHTML = '';
-          syncStatus.textContent = 'Not signed in';
+        document.getElementById('loginBtn').style.display = status ? 'none' : 'inline-block';
+        document.getElementById('logoutBtn').style.display = status ? 'inline-block' : 'none';
+        document.getElementById('syncStatus').textContent = status ? 'Loading mindmap...' : 'Not signed in';
+        if (!status) {
+          document.getElementById('userInfo').style.display = 'none';
+          accessToken = null;
           appDataFileId = null;
           createDefaultMindmap();
           renderMindmap();
         }
       }
 
-      function handleAuthClick() {
-        gapi.auth2.getAuthInstance().signIn();
+      function handleSignIn() {
+        tokenClient.requestAccessToken();
       }
 
-      function handleSignOutClick() {
-        gapi.auth2.getAuthInstance().signOut();
+      function handleSignOut() {
+        // Revoke the token
+        if (accessToken) {
+          google.accounts.oauth2.revoke(accessToken, () => {
+            console.log('Token revoked');
+          });
+        }
+        updateSigninStatus(false);
       }
 
-      function initGoogleAPI() {
-        gapi.load('client:auth2', async () => {
+      // ---------- GOOGLE DRIVE CLIENT (gapi) ----------
+      function initGapiClient() {
+        gapi.load('client', async () => {
           try {
             await gapi.client.init({
               apiKey: API_KEY,
-              clientId: CLIENT_ID,
-              discoveryDocs: DISCOVERY_DOCS,
-              scope: SCOPES
+              discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
             });
-            const authInstance = gapi.auth2.getAuthInstance();
-            authInstance.isSignedIn.listen(updateSigninStatus);
-            updateSigninStatus(authInstance.isSignedIn.get());
-
-            document.getElementById('loginBtn').addEventListener('click', handleAuthClick);
-            document.getElementById('logoutBtn').addEventListener('click', handleSignOutClick);
+            gapi.client.setToken({ access_token: accessToken });
+            // Now load mindmap
+            loadMindmapFromDrive();
           } catch (error) {
-            console.error('Google API init error:', error);
-            document.getElementById('syncStatus').textContent = 'API init failed';
-            createDefaultMindmap();
-            renderMindmap();
+            console.error('Gapi client init error:', error);
+            document.getElementById('syncStatus').textContent = 'Drive API init failed';
           }
         });
       }
@@ -476,7 +494,7 @@
       }
 
       async function saveMindmapToDrive(isNew = false) {
-        if (!isSignedIn) return;
+        if (!isSignedIn || !accessToken) return;
         const jsonContent = serializeMindmap();
         const fileMetadata = {
           name: 'mindmap.json',
@@ -517,6 +535,7 @@
         }, 2000);
       }
 
+      // ---------- MINDMAP LAYOUT & RENDERING ----------
       function computeLayout() {
         const positions = new Map();
         const rootNode = nodes.get(rootId);
@@ -790,8 +809,22 @@
         createDefaultMindmap();
         renderMindmap();
         bindEditorEvents();
-        initGoogleAPI();
 
+        // Initialize GIS library
+        if (typeof google !== 'undefined' && google.accounts) {
+          initGis();
+        } else {
+          // If library not loaded yet, wait a bit (should not happen as script is loaded async)
+          window.addEventListener('load', () => {
+            if (google.accounts) initGis();
+          });
+        }
+
+        // Setup login/logout buttons
+        document.getElementById('loginBtn').addEventListener('click', handleSignIn);
+        document.getElementById('logoutBtn').addEventListener('click', handleSignOut);
+
+        // Pan and zoom
         const mapContainer = document.getElementById('mapContainer');
         let isPanning = false, startX, startY, scrollLeft, scrollTop;
         mapContainer.addEventListener('mousedown', (e) => {
