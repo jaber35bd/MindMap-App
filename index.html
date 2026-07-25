@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>MindMap - Google Drive Sync</title>
+  <script src="https://apis.google.com/js/api.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      background: #f4f7fa;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .toolbar {
+      background: white;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      z-index: 10;
+    }
+    .toolbar .app-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    .toolbar .auth-section {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .login-btn, .logout-btn {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 24px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 0.9rem;
+    }
+    .login-btn:hover, .logout-btn:hover {
+      background: #1557b0;
+    }
+    .logout-btn {
+      background: #e74c3c;
+    }
+    .logout-btn:hover {
+      background: #c0392b;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: #2c3e50;
+    }
+    .user-info img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid #ecf0f1;
+    }
+    .sync-status {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+      margin-right: 12px;
+    }
+    .main-container {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+    .map-area {
+      flex: 1;
+      background: #ffffff;
+      position: relative;
+      overflow: auto;
+      cursor: grab;
+    }
+    .map-area:active {
+      cursor: grabbing;
+    }
+    .map-area svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .editor-panel {
+      width: 280px;
+      background: white;
+      border-left: 1px solid #e0e0e0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      box-shadow: -2px 0 10px rgba(0,0,0,0.03);
+      overflow-y: auto;
+      transition: width 0.3s;
+    }
+    .editor-panel.hidden {
+      width: 0;
+      padding: 0;
+      border: none;
+      overflow: hidden;
+    }
+    .editor-panel h3 {
+      color: #2c3e50;
+      font-size: 1.1rem;
+      margin-bottom: 5px;
+      white-space: nowrap;
+    }
+    .editor-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .editor-field label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .editor-field input, .editor-field textarea {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      transition: 0.2s;
+      resize: vertical;
+    }
+    .editor-field input:focus, .editor-field textarea:focus {
+      border-color: #1a73e8;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(26,115,232,0.1);
+    }
+    .editor-field textarea {
+      min-height: 60px;
+    }
+    .node-preview-image {
+      max-width: 100%;
+      max-height: 80px;
+      border-radius: 6px;
+      margin-top: 5px;
+      object-fit: cover;
+      border: 1px solid #eee;
+    }
+    .editor-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 5px;
+    }
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-add {
+      background: #27ae60;
+      color: white;
+    }
+    .btn-add:hover {
+      background: #219a52;
+    }
+    .btn-delete {
+      background: #e74c3c;
+      color: white;
+    }
+    .btn-delete:hover {
+      background: #c0392b;
+    }
+    .btn-save {
+      background: #1a73e8;
+      color: white;
+    }
+    .btn-save:hover {
+      background: #1557b0;
+    }
+    .btn-close {
+      background: #bdc3c7;
+      color: #2c3e50;
+    }
+    .btn-close:hover {
+      background: #a6acaf;
+    }
+    .no-selection-message {
+      color: #95a5a6;
+      font-style: italic;
+      font-size: 0.9rem;
+      text-align: center;
+      margin-top: 30px;
+    }
+    @media (max-width: 768px) {
+      .main-container {
+        flex-direction: column;
+      }
+      .editor-panel {
+        width: 100%;
+        max-height: 40vh;
+        border-left: none;
+        border-top: 1px solid #e0e0e0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="app-title">🧠 MindMap Pro</div>
+    <div class="auth-section">
+      <span id="syncStatus" class="sync-status">Not signed in</span>
+      <div id="userInfo" class="user-info" style="display:none;"></div>
+      <button id="loginBtn" class="login-btn">Sign in with Google</button>
+      <button id="logoutBtn" class="logout-btn" style="display:none;">Sign out</button>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div id="mapContainer" class="map-area">
+      <svg id="mindmapSvg"></svg>
+    </div>
+    <div id="editorPanel" class="editor-panel hidden">
+      <h3>✏️ Node Editor</h3>
+      <div class="editor-field">
+        <label>Text</label>
+        <textarea id="nodeText" placeholder="Enter node text..."></textarea>
+      </div>
+      <div class="editor-field">
+        <label>Image URL</label>
+        <input type="text" id="nodeImageUrl" placeholder="https://example.com/image.jpg">
+        <img id="nodeImagePreview" class="node-preview-image" style="display:none;" alt="Preview">
+      </div>
+      <div class="editor-field">
+        <label>Link URL</label>
+        <input type="text" id="nodeLinkUrl" placeholder="https://example.com">
+      </div>
+      <div class="editor-actions">
+        <button id="btnAddChild" class="btn btn-add">➕ Add Child</button>
+        <button id="btnDeleteNode" class="btn btn-delete">🗑️ Delete Node</button>
+        <button id="btnCloseEditor" class="btn btn-close">✖ Close</button>
+      </div>
+      <div class="editor-actions" style="margin-top:10px;">
+        <button id="btnSaveManual" class="btn btn-save">💾 Save to Drive</button>
+      </div>
+      <div id="noSelectionMsg" class="no-selection-message">Click a node to edit</div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // ---------- GOOGLE API CONFIGURATION ----------
+      // তোমার দেওয়া Credentials
+      const CLIENT_ID = '1086951640296-jrlskg8g6r2obe2ditsb1ocuph5ili4j.apps.googleusercontent.com';
+      const API_KEY = 'AIzaSyDEG3yc1E_16M3eeOqsuDq8x98jN9AwpTQ';
+      const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+      const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+
+      let nodes = new Map();
+      let rootId = 'root';
+      let selectedNodeId = null;
+      let isSignedIn = false;
+      let appDataFileId = null;
+      let saveTimeout = null;
+
+      const BASE_RADIUS = 180;
+      const LEVEL_RADIUS_INCREMENT = 160;
+      const NODE_WIDTH = 160;
+      const NODE_HEIGHT = 60;
+      const IMAGE_PREVIEW_SIZE = 40;
+
+      function createDefaultMindmap() {
+        nodes.clear();
+        rootId = 'root';
+        nodes.set(rootId, {
+          id: rootId,
+          text: 'My Mind Map',
+          imageUrl: '',
+          linkUrl: '',
+          children: [],
+          parentId: null
+        });
+        addChildNode(rootId, 'Ideas', '', '');
+        let child1 = nodes.get(rootId).children[0];
+        addChildNode(child1, 'Brainstorm', '', '');
+        addChildNode(child1, 'Research', '', '');
+        addChildNode(rootId, 'Tasks', '', '');
+        selectedNodeId = null;
+      }
+
+      function generateId() {
+        return 'node_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+      }
+
+      function addChildNode(parentId, text = 'New Node', imageUrl = '', linkUrl = '') {
+        const id = generateId();
+        nodes.set(id, {
+          id,
+          text,
+          imageUrl,
+          linkUrl,
+          children: [],
+          parentId
+        });
+        const parent = nodes.get(parentId);
+        if (parent) parent.children.push(id);
+        return id;
+      }
+
+      function deleteNodeRecursive(nodeId) {
+        const node = nodes.get(nodeId);
+        if (!node) return;
+        [...node.children].forEach(childId => deleteNodeRecursive(childId));
+        if (node.parentId) {
+          const parent = nodes.get(node.parentId);
+          if (parent) parent.children = parent.children.filter(cid => cid !== nodeId);
+        }
+        nodes.delete(nodeId);
+      }
+
+      function serializeMindmap() {
+        const plainNodes = {};
+        nodes.forEach((node, id) => {
+          plainNodes[id] = {
+            id: node.id,
+            text: node.text,
+            imageUrl: node.imageUrl,
+            linkUrl: node.linkUrl,
+            children: node.children,
+            parentId: node.parentId
+          };
+        });
+        return JSON.stringify({ rootId, nodes: plainNodes }, null, 2);
+      }
+
+      function deserializeMindmap(jsonStr) {
+        try {
+          const data = JSON.parse(jsonStr);
+          rootId = data.rootId || 'root';
+          nodes.clear();
+          if (data.nodes) {
+            Object.keys(data.nodes).forEach(id => {
+              const n = data.nodes[id];
+              nodes.set(id, {
+                id: n.id,
+                text: n.text || 'Node',
+                imageUrl: n.imageUrl || '',
+                linkUrl: n.linkUrl || '',
+                children: n.children || [],
+                parentId: n.parentId || null
+              });
+            });
+          }
+          if (!nodes.has(rootId)) createDefaultMindmap();
+          selectedNodeId = null;
+        } catch (e) {
+          console.error('Failed to parse mindmap, creating default', e);
+          createDefaultMindmap();
+        }
+      }
+
+      function updateSigninStatus(status) {
+        isSignedIn = status;
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userInfoDiv = document.getElementById('userInfo');
+        const syncStatus = document.getElementById('syncStatus');
+
+        if (isSignedIn) {
+          loginBtn.style.display = 'none';
+          logoutBtn.style.display = 'inline-block';
+          const profile = gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile();
+          if (profile) {
+            userInfoDiv.style.display = 'flex';
+            userInfoDiv.innerHTML = `<img src="${profile.getImageUrl()}" alt="profile"/> <span>${profile.getName()}</span>`;
+          }
+          syncStatus.textContent = 'Loading mindmap...';
+          loadMindmapFromDrive();
+        } else {
+          loginBtn.style.display = 'inline-block';
+          logoutBtn.style.display = 'none';
+          userInfoDiv.style.display = 'none';
+          userInfoDiv.innerHTML = '';
+          syncStatus.textContent = 'Not signed in';
+          appDataFileId = null;
+          createDefaultMindmap();
+          renderMindmap();
+        }
+      }
+
+      function handleAuthClick() {
+        gapi.auth2.getAuthInstance().signIn();
+      }
+
+      function handleSignOutClick() {
+        gapi.auth2.getAuthInstance().signOut();
+      }
+
+      function initGoogleAPI() {
+        gapi.load('client:auth2', async () => {
+          try {
+            await gapi.client.init({
+              apiKey: API_KEY,
+              clientId: CLIENT_ID,
+              discoveryDocs: DISCOVERY_DOCS,
+              scope: SCOPES
+            });
+            const authInstance = gapi.auth2.getAuthInstance();
+            authInstance.isSignedIn.listen(updateSigninStatus);
+            updateSigninStatus(authInstance.isSignedIn.get());
+
+            document.getElementById('loginBtn').addEventListener('click', handleAuthClick);
+            document.getElementById('logoutBtn').addEventListener('click', handleSignOutClick);
+          } catch (error) {
+            console.error('Google API init error:', error);
+            document.getElementById('syncStatus').textContent = 'API init failed';
+            createDefaultMindmap();
+            renderMindmap();
+          }
+        });
+      }
+
+      async function loadMindmapFromDrive() {
+        document.getElementById('syncStatus').textContent = 'Loading...';
+        try {
+          const response = await gapi.client.drive.files.list({
+            spaces: 'appDataFolder',
+            fields: 'files(id, name)',
+            pageSize: 10
+          });
+          const files = response.result.files;
+          let fileId = null;
+          if (files && files.length > 0) {
+            const mindmapFile = files.find(f => f.name === 'mindmap.json');
+            if (mindmapFile) fileId = mindmapFile.id;
+          }
+          if (fileId) {
+            const fileResp = await gapi.client.drive.files.get({
+              fileId: fileId,
+              alt: 'media'
+            });
+            const content = fileResp.body;
+            deserializeMindmap(content);
+            appDataFileId = fileId;
+            document.getElementById('syncStatus').textContent = 'Mindmap loaded';
+          } else {
+            createDefaultMindmap();
+            await saveMindmapToDrive(true);
+            document.getElementById('syncStatus').textContent = 'New mindmap created';
+          }
+          renderMindmap();
+        } catch (error) {
+          console.error('Load error:', error);
+          document.getElementById('syncStatus').textContent = 'Load failed';
+          createDefaultMindmap();
+          renderMindmap();
+        }
+      }
+
+      async function saveMindmapToDrive(isNew = false) {
+        if (!isSignedIn) return;
+        const jsonContent = serializeMindmap();
+        const fileMetadata = {
+          name: 'mindmap.json',
+          parents: ['appDataFolder']
+        };
+        const media = {
+          mimeType: 'application/json',
+          body: jsonContent
+        };
+        try {
+          if (isNew || !appDataFileId) {
+            const createResp = await gapi.client.drive.files.create({
+              resource: fileMetadata,
+              media: media,
+              fields: 'id'
+            });
+            appDataFileId = createResp.result.id;
+            document.getElementById('syncStatus').textContent = 'Saved';
+          } else {
+            await gapi.client.drive.files.update({
+              fileId: appDataFileId,
+              media: media,
+              fields: 'id'
+            });
+            document.getElementById('syncStatus').textContent = 'Saved';
+          }
+        } catch (error) {
+          console.error('Save error:', error);
+          document.getElementById('syncStatus').textContent = 'Save failed';
+        }
+      }
+
+      function triggerAutoSave() {
+        if (!isSignedIn) return;
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+          saveMindmapToDrive(false);
+        }, 2000);
+      }
+
+      function computeLayout() {
+        const positions = new Map();
+        const rootNode = nodes.get(rootId);
+        if (!rootNode) return positions;
+
+        function countLeaves(nodeId) {
+          const node = nodes.get(nodeId);
+          if (!node || node.children.length === 0) return 1;
+          let total = 0;
+          node.children.forEach(cid => total += countLeaves(cid));
+          return total;
+        }
+        const leafCounts = new Map();
+        function calcLeafCounts(nodeId) {
+          const cnt = countLeaves(nodeId);
+          leafCounts.set(nodeId, cnt);
+          const node = nodes.get(nodeId);
+          if (node) node.children.forEach(cid => calcLeafCounts(cid));
+        }
+        calcLeafCounts(rootId);
+
+        function assignPositions(nodeId, angleStart, angleSpan, radius, parentAngle) {
+          const node = nodes.get(nodeId);
+          if (!node) return;
+          let myAngle;
+          if (nodeId === rootId) {
+            myAngle = 0;
+            positions.set(nodeId, { x: 0, y: 0 });
+          } else {
+            myAngle = angleStart + angleSpan / 2;
+            const x = radius * Math.cos(myAngle);
+            const y = radius * Math.sin(myAngle);
+            positions.set(nodeId, { x, y });
+          }
+
+          const children = node.children.filter(cid => nodes.has(cid));
+          if (children.length === 0) return;
+
+          const totalLeaves = leafCounts.get(nodeId) || 1;
+          let currentAngle = angleStart;
+          children.forEach(cid => {
+            const childLeaves = leafCounts.get(cid) || 1;
+            const childAngleSpan = (childLeaves / totalLeaves) * angleSpan;
+            assignPositions(cid, currentAngle, childAngleSpan, radius + LEVEL_RADIUS_INCREMENT, myAngle);
+            currentAngle += childAngleSpan;
+          });
+        }
+
+        assignPositions(rootId, 0, 2 * Math.PI, 0, 0);
+        return positions;
+      }
+
+      function renderMindmap() {
+        const svg = document.getElementById('mindmapSvg');
+        svg.innerHTML = '';
+
+        const positions = computeLayout();
+        if (positions.size === 0) return;
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        positions.forEach(pos => {
+          minX = Math.min(minX, pos.x);
+          minY = Math.min(minY, pos.y);
+          maxX = Math.max(maxX, pos.x);
+          maxY = Math.max(maxY, pos.y);
+        });
+        const padding = 250;
+        const viewBoxX = minX - padding;
+        const viewBoxY = minY - padding;
+        const viewBoxW = maxX - minX + 2 * padding;
+        const viewBoxH = maxY - minY + 2 * padding;
+        svg.setAttribute('viewBox', `${viewBoxX} ${viewBoxY} ${Math.max(viewBoxW, 400)} ${Math.max(viewBoxH, 400)}`);
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        defs.innerHTML = `<marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#7f8c8d"/>
+        </marker>`;
+        svg.appendChild(defs);
+
+        nodes.forEach((node, id) => {
+          if (id === rootId || !node.parentId) return;
+          const parentPos = positions.get(node.parentId);
+          const childPos = positions.get(id);
+          if (!parentPos || !childPos) return;
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', parentPos.x);
+          line.setAttribute('y1', parentPos.y);
+          line.setAttribute('x2', childPos.x);
+          line.setAttribute('y2', childPos.y);
+          line.setAttribute('stroke', '#bdc3c7');
+          line.setAttribute('stroke-width', '2');
+          line.setAttribute('stroke-linecap', 'round');
+          svg.appendChild(line);
+        });
+
+        nodes.forEach((node, id) => {
+          const pos = positions.get(id);
+          if (!pos) return;
+          const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          g.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+          g.setAttribute('data-node-id', id);
+          g.style.cursor = 'pointer';
+
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rect.setAttribute('x', -NODE_WIDTH/2);
+          rect.setAttribute('y', -NODE_HEIGHT/2);
+          rect.setAttribute('width', NODE_WIDTH);
+          rect.setAttribute('height', NODE_HEIGHT);
+          rect.setAttribute('rx', '10');
+          rect.setAttribute('fill', id === selectedNodeId ? '#ebf5fb' : '#ffffff');
+          rect.setAttribute('stroke', id === selectedNodeId ? '#1a73e8' : '#bdc3c7');
+          rect.setAttribute('stroke-width', id === selectedNodeId ? '3' : '1.5');
+          g.appendChild(rect);
+
+          let textXOffset = 0;
+          if (node.imageUrl) {
+            const clipId = 'clip_' + id;
+            const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+            clipPath.setAttribute('id', clipId);
+            const clipRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            clipRect.setAttribute('x', -NODE_WIDTH/2 + 8);
+            clipRect.setAttribute('y', -NODE_HEIGHT/2 + 8);
+            clipRect.setAttribute('width', IMAGE_PREVIEW_SIZE);
+            clipRect.setAttribute('height', IMAGE_PREVIEW_SIZE);
+            clipRect.setAttribute('rx', '6');
+            clipPath.appendChild(clipRect);
+            defs.appendChild(clipPath);
+
+            const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+            img.setAttribute('x', -NODE_WIDTH/2 + 8);
+            img.setAttribute('y', -NODE_HEIGHT/2 + 8);
+            img.setAttribute('width', IMAGE_PREVIEW_SIZE);
+            img.setAttribute('height', IMAGE_PREVIEW_SIZE);
+            img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+            img.setAttribute('href', node.imageUrl);
+            img.setAttribute('clip-path', `url(#${clipId})`);
+            g.appendChild(img);
+            textXOffset = IMAGE_PREVIEW_SIZE + 12;
+          }
+
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', -NODE_WIDTH/2 + 12 + textXOffset);
+          text.setAttribute('y', 5);
+          text.setAttribute('fill', '#2c3e50');
+          text.setAttribute('font-size', '13');
+          text.setAttribute('font-weight', '500');
+          text.textContent = node.text.length > 20 ? node.text.substring(0,20)+'…' : node.text;
+          g.appendChild(text);
+
+          if (node.linkUrl) {
+            const linkIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            linkIcon.setAttribute('x', NODE_WIDTH/2 - 16);
+            linkIcon.setAttribute('y', -NODE_HEIGHT/2 + 18);
+            linkIcon.setAttribute('fill', '#1a73e8');
+            linkIcon.setAttribute('font-size', '14');
+            linkIcon.textContent = '🔗';
+            g.appendChild(linkIcon);
+          }
+
+          g.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectNode(id);
+          });
+
+          g.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            const nd = nodes.get(id);
+            if (nd && nd.linkUrl) window.open(nd.linkUrl, '_blank');
+          });
+
+          svg.appendChild(g);
+        });
+
+        svg.addEventListener('click', (e) => {
+          if (e.target === svg) selectNode(null);
+        });
+      }
+
+      function selectNode(nodeId) {
+        selectedNodeId = nodeId;
+        updateEditorPanel();
+        renderMindmap();
+      }
+
+      function updateEditorPanel() {
+        const panel = document.getElementById('editorPanel');
+        const noSelMsg = document.getElementById('noSelectionMsg');
+        const node = selectedNodeId ? nodes.get(selectedNodeId) : null;
+
+        if (!node) {
+          panel.classList.add('hidden');
+          if (noSelMsg) noSelMsg.style.display = 'block';
+          return;
+        }
+        panel.classList.remove('hidden');
+        if (noSelMsg) noSelMsg.style.display = 'none';
+
+        document.getElementById('nodeText').value = node.text || '';
+        document.getElementById('nodeImageUrl').value = node.imageUrl || '';
+        document.getElementById('nodeLinkUrl').value = node.linkUrl || '';
+        updateImagePreview();
+      }
+
+      function updateImagePreview() {
+        const url = document.getElementById('nodeImageUrl').value.trim();
+        const preview = document.getElementById('nodeImagePreview');
+        if (url) {
+          preview.src = url;
+          preview.style.display = 'block';
+        } else {
+          preview.style.display = 'none';
+        }
+      }
+
+      function saveEditorChanges() {
+        if (!selectedNodeId) return;
+        const node = nodes.get(selectedNodeId);
+        if (!node) return;
+        node.text = document.getElementById('nodeText').value.trim() || 'Node';
+        node.imageUrl = document.getElementById('nodeImageUrl').value.trim();
+        node.linkUrl = document.getElementById('nodeLinkUrl').value.trim();
+        renderMindmap();
+        triggerAutoSave();
+      }
+
+      function addChildFromEditor() {
+        if (!selectedNodeId) return;
+        const newId = addChildNode(selectedNodeId, 'New Child');
+        saveEditorChanges();
+        selectNode(newId);
+        renderMindmap();
+        triggerAutoSave();
+      }
+
+      function deleteSelectedNode() {
+        if (!selectedNodeId) return;
+        if (selectedNodeId === rootId) {
+          alert('Cannot delete the root node.');
+          return;
+        }
+        if (confirm('Delete this node and all its children?')) {
+          deleteNodeRecursive(selectedNodeId);
+          selectedNodeId = null;
+          renderMindmap();
+          updateEditorPanel();
+          triggerAutoSave();
+        }
+      }
+
+      function closeEditor() {
+        selectNode(null);
+      }
+
+      function bindEditorEvents() {
+        document.getElementById('nodeText').addEventListener('input', saveEditorChanges);
+        document.getElementById('nodeImageUrl').addEventListener('input', () => {
+          updateImagePreview();
+          saveEditorChanges();
+        });
+        document.getElementById('nodeLinkUrl').addEventListener('input', saveEditorChanges);
+        document.getElementById('btnAddChild').addEventListener('click', addChildFromEditor);
+        document.getElementById('btnDeleteNode').addEventListener('click', deleteSelectedNode);
+        document.getElementById('btnCloseEditor').addEventListener('click', closeEditor);
+        document.getElementById('btnSaveManual').addEventListener('click', () => {
+          if (isSignedIn) saveMindmapToDrive(false);
+        });
+      }
+
+      function bootstrap() {
+        createDefaultMindmap();
+        renderMindmap();
+        bindEditorEvents();
+        initGoogleAPI();
+
+        const mapContainer = document.getElementById('mapContainer');
+        let isPanning = false, startX, startY, scrollLeft, scrollTop;
+        mapContainer.addEventListener('mousedown', (e) => {
+          if (e.target === mapContainer || e.target === document.getElementById('mindmapSvg')) {
+            isPanning = true;
+            startX = e.clientX - mapContainer.offsetLeft;
+            startY = e.clientY - mapContainer.offsetTop;
+            scrollLeft = mapContainer.scrollLeft;
+            scrollTop = mapContainer.scrollTop;
+            mapContainer.style.cursor = 'grabbing';
+          }
+        });
+        window.addEventListener('mouseup', () => {
+          isPanning = false;
+          mapContainer.style.cursor = 'grab';
+        });
+        mapContainer.addEventListener('mousemove', (e) => {
+          if (!isPanning) return;
+          e.preventDefault();
+          const x = e.clientX - mapContainer.offsetLeft;
+          const y = e.clientY - mapContainer.offsetTop;
+          const walkX = (x - startX) * 1.5;
+          const walkY = (y - startY) * 1.5;
+          mapContainer.scrollLeft = scrollLeft - walkX;
+          mapContainer.scrollTop = scrollTop - walkY;
+        });
+      }
+
+      window.addEventListener('DOMContentLoaded', bootstrap);
+    })();
+  </script>
+</body>
+</html>
